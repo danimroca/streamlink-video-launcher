@@ -1,0 +1,47 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release --locked
+
+      - name: Strip (linux)
+        if: runner.os == 'Linux'
+        run: strip target/release/streamlink-video-launcher
+
+      - name: Strip (macos)
+        if: runner.os == 'macOS'
+        run: strip target/release/streamlink-video-launcher
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamlink-video-launcher-${{ runner.os }}
+          path: |
+            target/release/streamlink-video-launcher
+            target/release/streamlink-video-launcher.exe
+          if-no-files-found: warn
