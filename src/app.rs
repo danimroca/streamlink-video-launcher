@@ -604,7 +604,7 @@ fn resolve_and_watch(url: &str, quality: &str, player: &str) -> Result<String, S
             .unwrap_or_default();
         if player == "mpv" {
             let format = ytdlp::format_for_quality(quality);
-            std::process::Command::new("mpv")
+            platform::silent("mpv")
                 .arg(format!("--ytdl-format={}", &format))
                 .arg(url)
                 .spawn()

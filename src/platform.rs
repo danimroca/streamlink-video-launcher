@@ -1,5 +1,19 @@
 use std::process::Command;
 
+fn new_command(program: &str) -> Command {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        let mut cmd = Command::new(program);
+        cmd.creation_flags(0x08000000);
+        cmd
+    }
+    #[cfg(not(windows))]
+    {
+        Command::new(program)
+    }
+}
+
 pub fn find_player() -> Option<String> {
     for name in &["mpv", "vlc", "celluloid"] {
         if binary_exists(name) {
@@ -15,7 +29,7 @@ pub fn find_player() -> Option<String> {
         ];
         for path in common_paths {
             if std::path::Path::new(path).exists() {
-                return Some("vlc".to_string());
+                return Some(path.to_string());
             }
         }
     }
@@ -25,7 +39,7 @@ pub fn find_player() -> Option<String> {
 
 fn binary_exists(name: &str) -> bool {
     let (cmd, arg) = if cfg!(windows) { ("where", name) } else { ("which", name) };
-    Command::new(cmd)
+    new_command(cmd)
         .arg(arg)
         .output()
         .ok()
@@ -33,7 +47,7 @@ fn binary_exists(name: &str) -> bool {
 }
 
 pub fn launch_player(player: &str, urls: &[String]) -> Result<(), String> {
-    let mut cmd = Command::new(player);
+    let mut cmd = new_command(player);
     for url in urls {
         cmd.arg(url);
     }
@@ -48,22 +62,27 @@ pub fn is_youtube_url(url: &str) -> bool {
 
 pub fn open_url(url: &str) -> Result<(), String> {
     #[cfg(target_os = "linux")]
-    let status = Command::new("xdg-open").arg(url).status();
+    let status = new_command("xdg-open").arg(url).status();
     #[cfg(target_os = "macos")]
-    let status = Command::new("open").arg(url).status();
+    let status = new_command("open").arg(url).status();
     #[cfg(target_os = "windows")]
-    let status = Command::new("cmd").args(["/c", "start", "", url]).status();
+    let status = new_command("cmd").args(["/c", "start", "", url]).status();
     status.map_err(|e| format!("Failed to open URL: {e}"))?;
     Ok(())
 }
 
 pub fn open_in_default_player(path: &str) -> Result<(), String> {
     #[cfg(target_os = "linux")]
-    let status = Command::new("xdg-open").arg(path).status();
+    let status = new_command("xdg-open").arg(path).status();
     #[cfg(target_os = "macos")]
-    let status = Command::new("open").arg(path).status();
+    let status = new_command("open").arg(path).status();
     #[cfg(target_os = "windows")]
-    let status = Command::new("cmd").args(["/c", "start", "", path]).status();
+    let status = new_command("cmd").args(["/c", "start", "", path]).status();
     status.map_err(|e| format!("Failed to open file: {e}"))?;
     Ok(())
+}
+
+// Creates a Command with console window suppression on Windows
+pub fn silent(program: impl AsRef<std::path::Path>) -> Command {
+    new_command(program.as_ref().to_str().unwrap_or_default())
 }

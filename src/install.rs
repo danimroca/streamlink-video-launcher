@@ -1,5 +1,5 @@
+use crate::platform;
 use std::path::PathBuf;
-use std::process::Command;
 
 #[derive(Debug, Clone)]
 pub struct Report {
@@ -33,7 +33,7 @@ const STREAMLINK_INSTALL_URL: &str = "https://streamlink.github.io/install.html"
 
 fn has_python() -> bool {
     ["python3", "python"].iter().any(|cmd| {
-        Command::new(cmd)
+        platform::silent(cmd)
             .arg("--version")
             .output()
             .ok()
@@ -48,7 +48,7 @@ pub fn install_streamlink() -> Result<String, String> {
     }
 
     for pip in &["pip3", "pip"] {
-        let output = Command::new(pip)
+        let output = platform::silent(pip)
             .args(["install", "--user", "streamlink"])
             .output();
         match output {

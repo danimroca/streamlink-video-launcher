@@ -1,6 +1,6 @@
+use crate::platform;
 use serde::Deserialize;
 use std::path::PathBuf;
-use std::process::Command;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct VideoInfo {
@@ -9,7 +9,7 @@ pub struct VideoInfo {
 
 fn binary() -> PathBuf {
     let name = if cfg!(windows) { "yt-dlp.exe" } else { "yt-dlp" };
-    if Command::new(name)
+    if platform::silent(name)
         .arg("--version")
         .output()
         .ok()
@@ -22,7 +22,7 @@ fn binary() -> PathBuf {
 
 pub fn exists() -> bool {
     let path = binary();
-    Command::new(path)
+    platform::silent(&path)
         .arg("--version")
         .output()
         .ok()
@@ -30,7 +30,7 @@ pub fn exists() -> bool {
 }
 
 pub fn resolve(url: &str) -> Result<VideoInfo, String> {
-    let output = Command::new(binary())
+    let output = platform::silent(binary())
         .args(["--dump-json", url])
         .output()
         .map_err(|e| format!("Failed to run yt-dlp: {e}"))?;
@@ -46,7 +46,7 @@ pub fn resolve(url: &str) -> Result<VideoInfo, String> {
 }
 
 pub fn stream_urls(url: &str, format: &str) -> Result<Vec<String>, String> {
-    let output = Command::new(binary())
+    let output = platform::silent(binary())
         .args(["-g", "-f", format, url])
         .output()
         .map_err(|e| format!("Failed to get stream URL: {e}"))?;
@@ -66,7 +66,7 @@ pub fn stream_urls(url: &str, format: &str) -> Result<Vec<String>, String> {
 }
 
 pub fn download(url: &str, format: &str, output: &str) -> Result<(), String> {
-    Command::new(binary())
+    platform::silent(binary())
         .args(["-f", format, "-o", output, url])
         .spawn()
         .map_err(|e| format!("Failed to start download: {e}"))?;
