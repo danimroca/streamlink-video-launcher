@@ -6,6 +6,20 @@ pub fn find_player() -> Option<String> {
             return Some(name.to_string());
         }
     }
+
+    #[cfg(windows)]
+    {
+        let common_paths = &[
+            r"C:\Program Files\VideoLAN\VLC\vlc.exe",
+            r"C:\Program Files (x86)\VideoLAN\VLC\vlc.exe",
+        ];
+        for path in common_paths {
+            if std::path::Path::new(path).exists() {
+                return Some("vlc".to_string());
+            }
+        }
+    }
+
     None
 }
 

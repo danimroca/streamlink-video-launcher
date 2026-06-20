@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::path::PathBuf;
 use std::process::Command;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -6,25 +7,30 @@ pub struct StreamInfo {
     pub title: Option<String>,
 }
 
-pub fn exists() -> bool {
-    if Command::new("streamlink")
+fn binary() -> PathBuf {
+    let name = if cfg!(windows) { "streamlink.exe" } else { "streamlink" };
+    if Command::new(name)
         .arg("--version")
         .output()
         .ok()
         .is_some_and(|o| o.status.success())
     {
-        return true;
+        return PathBuf::from(name);
     }
-    if let Some(path) = crate::install::tool_path("streamlink") {
-        if path.exists() {
-            return true;
-        }
-    }
-    false
+    crate::install::tool_path(name).unwrap_or_else(|| PathBuf::from(name))
+}
+
+pub fn exists() -> bool {
+    let path = binary();
+    Command::new(path)
+        .arg("--version")
+        .output()
+        .ok()
+        .is_some_and(|o| o.status.success())
 }
 
 pub fn resolve(url: &str) -> Result<StreamInfo, String> {
-    let output = Command::new("streamlink")
+    let output = Command::new(binary())
         .args(["--json", url])
         .output()
         .map_err(|e| format!("Failed to run streamlink: {e}"))?;
@@ -40,7 +46,7 @@ pub fn resolve(url: &str) -> Result<StreamInfo, String> {
 }
 
 pub fn play(url: &str, quality: &str, player: &str) -> Result<(), String> {
-    Command::new("streamlink")
+    Command::new(binary())
         .args(["--player", player, url, quality])
         .spawn()
         .map_err(|e| format!("Failed to launch streamlink: {e}"))?;
@@ -48,7 +54,7 @@ pub fn play(url: &str, quality: &str, player: &str) -> Result<(), String> {
 }
 
 pub fn download(url: &str, quality: &str, output: &str) -> Result<(), String> {
-    Command::new("streamlink")
+    Command::new(binary())
         .args(["-o", output, url, quality])
         .spawn()
         .map_err(|e| format!("Failed to start download: {e}"))?;
